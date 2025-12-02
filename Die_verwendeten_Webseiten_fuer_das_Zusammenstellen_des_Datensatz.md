@@ -32,3 +32,6 @@ https://www.bfs.admin.ch/asset/de/316544
 
 Arbeitslosenquote:
 https://hls-dhs-dss.ch/articles/013924/2013-12-09/
+
+Abstimmungen:
+https://www.c2d.ch/country/CH
