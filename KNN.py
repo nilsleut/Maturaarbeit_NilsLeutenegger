@@ -611,3 +611,4 @@ class MLP:
         self.ValSet = valmenge
 
         return X[valmenge], Y[valmenge], X[trainmenge], Y[trainmenge]
+
