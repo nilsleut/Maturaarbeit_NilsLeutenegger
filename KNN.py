@@ -369,32 +369,32 @@ class MLP:
                     #RMSProp mit Nestrov-Momentum
                     if self.RMSProp and self.nestrov: 
                         vorvelocity = np.copy(self.velocity[l])
-                        av[l] = self.RMSProprate*av[l] + (1-self.RMSProprate) * grad**2
-                        self.velocity[l] = self.momentum * self.velocity[l] - eta/(np.sqrt(av[l])+ self.RMSPropconst) * grad
-                        self.W[l] += -self.momentum * vorvelocity + (1 + self.momentum) * self.velocity[l]
+                        av[l] = self.RMSProprate*av[l] + (1-self.RMSProprate) * grad**2 #RMSProp: Exp. Mittelwert der Gradientenquadrate (adaptive Stepgröße)
+                        self.velocity[l] = self.momentum * self.velocity[l] - eta/(np.sqrt(av[l])+ self.RMSPropconst) * grad #Berechnung des Momentums
+                        self.W[l] += -self.momentum * vorvelocity + (1 + self.momentum) * self.velocity[l] #Gewichtsupdate mit Nestrov
                         self.modelused="RMSProp/Nestrov"
 
                     #Adam 
                     elif self.Adam: 
-                        firstmomentvar[l] = self.firstmomentrate*firstmomentvar[l] + (1-self.firstmomentrate) * grad
-                        secmomentvar[l] = self.secmomentrate*secmomentvar[l] + (1-self.secmomentrate) * grad ** 2
-                        firstmomentbias[l] = firstmomentvar[l]/(1-self.firstmomentrate**timestep)
-                        secmomentbias[l] = secmomentvar[l]/(1-self.secmomentrate**timestep)
-                        self.W[l] -= eta*firstmomentbias[l]/(np.sqrt(secmomentbias[l])+self.Adamconst)
+                        firstmomentvar[l] = self.firstmomentrate*firstmomentvar[l] + (1-self.firstmomentrate) * grad #Exponentiell gewichteter Mittelwert 1. Moment
+                        secmomentvar[l] = self.secmomentrate*secmomentvar[l] + (1-self.secmomentrate) * grad ** 2 #Exponentiell gewichteter Mittelwert 2. Moment
+                        firstmomentbias[l] = firstmomentvar[l]/(1-self.firstmomentrate**timestep) #Bias Korrektur 1. Moment
+                        secmomentbias[l] = secmomentvar[l]/(1-self.secmomentrate**timestep) #Bias Korrektur 2. Moment
+                        self.W[l] -= eta*firstmomentbias[l]/(np.sqrt(secmomentbias[l])+self.Adamconst) #Gewichtsupdate
                         self.modelused="Adam"
 
                     #AdaGrad
                     elif self.adagrad: 
-                        av[l] += grad ** 2
-                        adaptivelr = eta / (np.sqrt(av[l]) + self.adagradconst)
-                        self.W[l] -= adaptivelr * grad
+                        av[l] += grad ** 2 #Akkumulation der Gradientenquadrate für adaptive Lernrate
+                        adaptivelr = eta / (np.sqrt(av[l]) + self.adagradconst) #Lernenrate pro Gewicht anpassen
+                        self.W[l] -= adaptivelr * grad #Gewichtsupdate
                         self.modelused="Adagrad"
                      
                     #RMSProp (ohne Nestrov)
                     elif self.RMSProp: 
                         av[l] = self.RMSProprate*av[l] + (1-self.RMSProprate) * grad**2
-                        adaptivelr = eta/(np.sqrt(av[l]+self.RMSPropconst))
-                        self.W[l] -= adaptivelr * grad
+                        adaptivelr = eta/(np.sqrt(av[l]+self.RMSPropconst)) #Lernrate adaptieren (moving average)
+                        self.W[l] -= adaptivelr * grad #Update mit gleitender Mittelwert-Lernrate
                         self.modelused="RMSProp"
 
                     #Momentum / Nesterov / SGD
@@ -403,16 +403,15 @@ class MLP:
                         if self.momentum > 0:
                             if self.nestrov: 
                                 vorvelocity = np.copy(self.velocity[l])
-                                self.velocity[l] = self.momentum * self.velocity[l] - eta * grad
-                                self.W[l] += -self.momentum * vorvelocity + (1 + self.momentum) * self.velocity[l]
+                                self.velocity[l] = self.momentum * self.velocity[l] - eta * grad #Vorblick-Speed berechnen
+                                self.W[l] += -self.momentum * vorvelocity + (1 + self.momentum) * self.velocity[l] #Gewichtsupdate mit Nestrov
                                 self.modelused="Nestrov Momentum"
-
                             else: 
-                                self.velocity[l] = self.momentum * self.velocity[l] - eta * grad
-                                self.W[l] += self.velocity[l]
+                                self.velocity[l] = self.momentum * self.velocity[l] - eta * grad #Berechnung des Momentums
+                                self.W[l] += self.velocity[l] #Gewichtsupdate mit Momentum
                                 self.modelused="Momentum"
                         else: 
-                            self.W[l] -= eta * grad
+                            self.W[l] -= eta * grad #Standard SGD Update
                             self.modelused="SGDUpdate"
 
                     #---Conjugate Gradient---
@@ -584,6 +583,10 @@ class MLP:
                     counter = 0
                 else:
                     counter += 1
+                    #Frühabbruch bei Early Stopping
+                    if counter >= self.patience:
+                        self.earlystop = True
+                        break
             
             #Frühabbruch bei Early Stopping
             if self.earlystop:
